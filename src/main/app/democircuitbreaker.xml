@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:circuitbreaker="http://www.mulesoft.org/schema/mule/circuitbreaker" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:test="http://www.mulesoft.org/schema/mule/test"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/circuitbreaker http://www.mulesoft.org/schema/mule/circuitbreaker/current/mule-circuitbreaker.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/test http://www.mulesoft.org/schema/mule/test/current/mule-test.xsd">
+
+    <circuitbreaker:config name="Circuit_Breaker__config" tripThreshold="5" tripTimeout="300000" breakerName="testingBreaker" doc:name="Circuit Breaker: config"/>
+    <configuration defaultExceptionStrategy-ref="democircuitbreakerCatch_Exception_Strategy" doc:name="Configuration">
+        <http:config useTransportForUris="false"/>
+    </configuration>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="democircuitbreakerFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/invoke" allowedMethods="GET" doc:name="HTTP"/>
+        <set-payload value="Hello" doc:name="Set Payload"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="vm.in" doc:name="VM"/>
+    </flow>
+
+<flow name="testFlow">
+    <vm:inbound-endpoint path="vm.in" doc:name="VM"/>
+    <!-- BEGIN_INCLUDE(circuitbreaker:filter) -->
+    <circuitbreaker:filter config-ref="Circuit_Breaker__config" doc:name="Circuit Breaker"/>
+    <!-- END_INCLUDE(circuitbreaker:filter) -->
+    <test:component throwException="true"/>
+    <vm:outbound-endpoint path="vm.out" doc:name="VM"/>
+</flow>
+    <catch-exception-strategy name="democircuitbreakerCatch_Exception_Strategy">
+        <circuitbreaker:trip config-ref="Circuit_Breaker__config" tripOnException="org.mule.tck.exceptions.FunctionalTestException" doc:name="Circuit Breaker"/>
+    </catch-exception-strategy>    
+</mule>
